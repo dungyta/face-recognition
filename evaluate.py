@@ -114,7 +114,8 @@ def eval(model, model_path=None, device=None):
 
     # Load model
     if model_path is not None:
-        state_dict = torch.load(model_path, map_location=device)
+        checkpoint = torch.load(model_path, map_location=device)  
+        state_dict = checkpoint['model'] if isinstance(checkpoint, dict) and 'model' in checkpoint else checkpoint  
         model.load_state_dict(state_dict)
     model.to(device).eval()
 
@@ -174,9 +175,12 @@ def eval(model, model_path=None, device=None):
 
 
 if __name__ == '__main__':
-    _, result = eval(sphere20(512).to('cuda'), model_path='weights/sphere20_mcp.pth')
-    _, result = eval(sphere36(512).to('cuda'), model_path='weights/sphere36_mcp.pth')
-    _, result = eval(MobileNetV1(512).to('cuda'), model_path='weights/mobilenetv1_mcp.pth')
-    _, result = eval(MobileNetV2(512).to('cuda'), model_path='weights/mobilenetv2_mcp.pth')
-    _, result = eval(mobilenet_v3_small(512).to('cuda'), model_path='weights/mobilenetv3_small_mcp.pth')
-    _, result = eval(mobilenet_v3_large(512).to('cuda'), model_path='weights/mobilenetv3_large_mcp.pth')
+    # _, result = eval(sphere20(512).to('cuda'), model_path='weights/sphere20_mcp.pth')
+    # _, result = eval(sphere36(512).to('cuda'), model_path='weights/sphere36_mcp.pth')
+    # _, result = eval(MobileNetV1(512).to('cuda'), model_path='weights/mobilenetv1_mcp.pth')
+    # _, result = eval(MobileNetV1(512).to('cuda'), model_path='weights/mobilenetv1_MCP_best.ckpt')
+    _, result = eval(MobileNetV1(embedding_dim=512, width_mult=0.5).to('cuda'), model_path='weights/mobilenetv1_050_MCP_best.ckpt')
+    # _, result = eval(MobileNetV2(512).to('cuda'), model_path='weights/mobilenetv2_mcp.pth')
+    # _, result = eval(mobilenet_v3_small(512).to('cuda'), model_path='weights/mobilenetv3_small_mcp.pth')
+    # _, result = eval(mobilenet_v3_large(512).to('cuda'), model_path='weights/mobilenetv3_large_mcp.pth')
+    # _, result = eval(mobilenet_v3_large(512).to('cuda'), model_path='weights/mobilenetv3_large_MCP_best.ckpt')
