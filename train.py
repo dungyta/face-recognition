@@ -55,7 +55,7 @@ def parse_arguments():
         type=str,
         default='sphere20',
         choices=[
-            'sphere20', 'sphere36', 'sphere64', 'mobilenetv1',
+            'sphere20', 'sphere36', 'sphere64', 'mobilenetv1','mobilenetv1_050',
             'mobilenetv2', 'mobilenetv3_small', 'mobilenetv3_large'
         ],
         help='Network architecture to use. Options: sphere20, sphere36, sphere64, mobile.'
@@ -273,6 +273,8 @@ def main(params):
         model = mobilenet_v3_small(embedding_dim=512)
     elif params.network == "mobilenetv3_large":
         model = mobilenet_v3_large(embedding_dim=512)
+    elif params.network == "mobilenetv1_050":
+        model = MobileNetV1(embedding_dim=512, width_mult=0.5)
     else:
         raise ValueError("Unsupported network!")
 
