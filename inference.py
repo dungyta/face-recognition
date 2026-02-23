@@ -36,9 +36,11 @@ def get_network(model_name: str) -> torch.nn.Module:
         "sphere36": sphere36(embedding_dim=512, in_channels=3),
         "sphere64": sphere64(embedding_dim=512, in_channels=3),
         "mobilenetv1": MobileNetV1(embedding_dim=512),
+        "mobilenetv1_050": MobileNetV1(embedding_dim=512, width_mult=0.5),
         "mobilenetv2": MobileNetV2(embedding_dim=512),
         "mobilenetv3_small": mobilenet_v3_small(embedding_dim=512),
         "mobilenetv3_large": mobilenet_v3_large(embedding_dim=512),
+        
     }
 
     if model_name not in models:
@@ -47,28 +49,34 @@ def get_network(model_name: str) -> torch.nn.Module:
     return models[model_name]
 
 
-def load_model(model_name: str, model_path: str, device: torch.device = None) -> torch.nn.Module:
-    """
-    Loads a deep learning model with pre-trained weights.
-    """
-    model = get_network(model_name)
-
-    try:
-        model.load_state_dict(torch.load(model_path, map_location=device))
-        model.to(device).eval()
-    except Exception as e:
-        raise RuntimeError(f"Error loading model '{model_name}' from {model_path}: {e}")
-
+def load_model(model_name: str, model_path: str, device: torch.device = None) -> torch.nn.Module:  
+    """  
+    Loads a deep learning model with pre-trained weights.  
+    Supports both training checkpoints (.ckpt) and plain state_dict files (.pth).  
+    """  
+    model = get_network(model_name)  
+  
+    try:  
+        checkpoint = torch.load(model_path, map_location=device, weights_only=False)  
+        # Training checkpoints contain metadata and a 'model' key  
+        if isinstance(checkpoint, dict) and 'model' in checkpoint:  
+            state_dict = checkpoint['model']  
+        else:  
+            state_dict = checkpoint  
+        model.load_state_dict(state_dict)  
+        model.to(device).eval()  
+    except Exception as e:  
+        raise RuntimeError(f"Error loading model '{model_name}' from {model_path}: {e}")  
+  
     return model
 
 
 def get_transform():
-    """
-    Returns the image preprocessing transformations.
-    """
     return transforms.Compose([
+        transforms.Resize((112, 112)),  # thêm dòng này
         transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        transforms.Normalize((0.5, 0.5, 0.5),
+                             (0.5, 0.5, 0.5))
     ])
 
 
@@ -104,9 +112,9 @@ def compare_faces(model, device, img1_path: str, img2_path: str, threshold: floa
 
 if __name__ == "__main__":
     # Example usage with model selection
-    model_name = "mobilenetv2"
-    model_path = "weights/mobilenetv2_mcp.pth"
-    threshold = 0.35
+    model_name = "mobilenetv1_050"  # Change this to select different models
+    model_path = "/home/dun/face-recognition/weights/mobilenetv1_050_MCP_best.ckpt"
+    threshold = 0.33
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -116,8 +124,8 @@ if __name__ == "__main__":
     # Compare faces
     similarity, is_same = compare_faces(
         model, device,
-        img1_path="assets/b_01.jpg",
-        img2_path="assets/b_02.jpg",
+        img1_path="assets/c_01.png",
+        img2_path="assets/c_02.png",
         threshold=threshold
     )
 
