@@ -4,10 +4,11 @@
 
 import numpy as np
 from PIL import Image
-
+import cv2
 import torch
 from torchvision import transforms
-
+from utils.face_utils import face_alignment
+from insightface.app import FaceAnalysis
 from models import (
     sphere20,
     sphere36,
@@ -20,6 +21,8 @@ from models import (
 
 from utils.face_utils import compute_similarity
 
+face_app = FaceAnalysis(name="buffalo_l")
+face_app.prepare(ctx_id=0,det_size=(160, 160))  # max_num=1 để chỉ lấy khuôn mặt chính
 
 def get_network(model_name: str) -> torch.nn.Module:
     """
@@ -78,23 +81,47 @@ def get_transform():
         transforms.Normalize((0.5, 0.5, 0.5),
                              (0.5, 0.5, 0.5))
     ])
-
-
 def extract_features(model, device, img_path: str) -> np.ndarray:
-    """
-    Extracts face features from an image.
-    """
+    img = cv2.imread(img_path)
+    if img is None:
+        raise ValueError(f"Cannot read image: {img_path}")
+
+    faces = face_app.get(img)
+    if len(faces) == 0:
+        raise ValueError("No face detected")
+
+    landmark = faces[0].kps  # 5 điểm landmark
+
+    aligned = face_alignment(img, landmark, image_size=112)
+
+    aligned = cv2.cvtColor(aligned, cv2.COLOR_BGR2RGB)
+    img_pil = Image.fromarray(aligned)
+
     transform = get_transform()
+    tensor = transform(img_pil).unsqueeze(0).to(device)
 
-    try:
-        img = Image.open(img_path).convert("RGB")
-    except Exception as e:
-        raise FileNotFoundError(f"Error opening image {img_path}: {e}")
-
-    tensor = transform(img).unsqueeze(0).to(device)
     with torch.no_grad():
-        features = model(tensor).squeeze().cpu().numpy()
+        features = model(tensor)
+        features = torch.nn.functional.normalize(features, dim=1)  # rất quan trọng
+        features = features.squeeze().cpu().numpy()
+
     return features
+
+# def extract_features(model, device, img_path: str) -> np.ndarray:
+#     """
+#     Extracts face features from an image.
+#     """
+#     transform = get_transform()
+
+#     try:
+#         img = Image.open(img_path).convert("RGB")
+#     except Exception as e:
+#         raise FileNotFoundError(f"Error opening image {img_path}: {e}")
+
+#     tensor = transform(img).unsqueeze(0).to(device)
+#     with torch.no_grad():
+#         features = model(tensor).squeeze().cpu().numpy()
+#     return features
 
 
 def compare_faces(model, device, img1_path: str, img2_path: str, threshold: float = 0.35) -> tuple[float, bool]:
@@ -124,8 +151,8 @@ if __name__ == "__main__":
     # Compare faces
     similarity, is_same = compare_faces(
         model, device,
-        img1_path="assets/c_01.png",
-        img2_path="assets/c_02.png",
+        img1_path="assets/b_01.png",
+        img2_path="assets/b_02.png",
         threshold=threshold
     )
 
